@@ -1,0 +1,14 @@
+# Settings
+theme            = "E7A96D47-B022-407D-9D85-B660EDC3D3B6"
+fontName         = "Source Code Pro"
+fontSize         = 14
+fileBrowserGlob  = "{*,.tm_properties,.htaccess}"
+
+# Variables
+#PATH             = "$PATH:$HOME/bin"
+#TM_GIT           = "/opt/local/bin/git"
+
+[ *.{c,cc,cpp,h,hpp,m,mm} ]
+lspCommand = clangd
+
+[ Makefile ]
