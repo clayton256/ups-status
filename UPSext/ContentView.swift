@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import OSLog
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -34,7 +35,13 @@ struct ContentView: View {
                 }
 #endif
                 ToolbarItem {
-                    Button(action: addItem) {
+                    Button {
+                        Task {
+                            let logs = await readLogs()
+                            // For now, log to console; you can present this in UI later
+                            print(logs)
+                        }
+                    } label: {
                         Label("Add Item", systemImage: "plus")
                     }
                 }
@@ -58,9 +65,26 @@ struct ContentView: View {
             }
         }
     }
+    
+    private func readLogs() async -> String {
+        do {
+            let store = try OSLogStore(scope: .currentProcessIdentifier)
+            let position = store.position(timeIntervalSinceLatestBoot: 1)
+            // https://useyourloaf.com/blog/fetching-oslog-messages-in-swift/ for NSPredicate examples
+            let predicate = NSPredicate(format: "subsystem BEGINSWITH %@", "com.")
+            let entries = try store.getEntries(at: position, matching: predicate)
+                .compactMap { $0 as? OSLogEntryLog }
+                //.filter { $0.subsystem == "com.apple.mail" }
+            return entries.map { "[\($0.date)] [\($0.category)] \($0.composedMessage)" }
+                          .joined(separator: "\n")
+        } catch {
+            return "Failed to fetch logs: \(error)"
+        }
+    }
 }
 
 #Preview {
     ContentView()
         .modelContainer(for: Item.self, inMemory: true)
 }
+
