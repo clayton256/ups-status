@@ -8,6 +8,8 @@
 import SwiftUI
 import SwiftData
 import OSLog
+import Foundation
+import IOKit.ps
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -37,12 +39,13 @@ struct ContentView: View {
                 ToolbarItem {
                     Button {
                         Task {
-                            let logs = await readLogs()
-                            // For now, log to console; you can present this in UI later
-                            print(logs)
+                            let psInfo = await retrievePowerSourcesInfo()
+//                            let logs = await readLogs()
+//                            // For now, log to console; you can present this in UI later
+                            print(psInfo)
                         }
                     } label: {
-                        Label("Add Item", systemImage: "plus")
+                        Label("Read Logs", systemImage: "plus")
                     }
                 }
             }
@@ -65,13 +68,31 @@ struct ContentView: View {
             }
         }
     }
+        
+    private func retrievePowerSourcesInfo() async -> String {
+        if let powerSourcesInfo = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() {
+            //CFShow(powerSourcesInfo)
+            
+            if let sourcesList = IOPSCopyPowerSourcesList(powerSourcesInfo)?.takeRetainedValue() {
+                //CFShow(sourcesList)
+                if let nameValue = CFDictionaryGetValue(sourcesList as! CFDictionary,Unmanaged.passUnretained(kIOPSNameKey as CFString).toOpaque()) {
+                    print(nameValue)
+                } else {
+                    return "Couldn't retrieve 'Name' key"
+                }
+            } else {
+                return "IOPSCopyPowerSourcesList returned nil"
+            }
+        }
+        return "Failed to get power sources info"
+    }
     
     private func readLogs() async -> String {
         do {
             let store = try OSLogStore(scope: .currentProcessIdentifier)
             let position = store.position(timeIntervalSinceLatestBoot: 1)
             // https://useyourloaf.com/blog/fetching-oslog-messages-in-swift/ for NSPredicate examples
-            let predicate = NSPredicate(format: "subsystem BEGINSWITH %@", "com.")
+            let predicate = NSPredicate(format: "subsystem BEGINSWITH %@", "com.apple.TimeMachine")
             let entries = try store.getEntries(at: position, matching: predicate)
                 .compactMap { $0 as? OSLogEntryLog }
                 //.filter { $0.subsystem == "com.apple.mail" }
